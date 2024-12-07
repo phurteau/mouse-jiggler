@@ -34,7 +34,7 @@ If you don't have Python installed or prefer running an executable, you can dire
 
 1. After downloading or cloning this repository, navigate to the `dist` folder where the executable is located.
 
-2. Simply double-click on `mouse_jiggler_gui_with_time_window.exe` to run the program.
+2. Simply double-click on `mouse-jiggler.exe` to run the program.
 
 3. No installation of Python or dependencies is required. The program will launch directly from the `.exe` file, and you can set the timer interval and start/end times for jiggling through the interface.
 
@@ -48,7 +48,7 @@ If you need to create the `.exe` yourself, you can use **PyInstaller**:
 
 2. Generate the `.exe`:
     ```bash
-    pyinstaller --onefile --windowed mouse_jiggler_gui_with_time_window.py
+    pyinstaller --onefile --windowed mouse-jiggler.py
     ```
 
 3. The `.exe` will be created in the `dist` folder. You can then distribute or run the `.exe` without needing Python installed.
