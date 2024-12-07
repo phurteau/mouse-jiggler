@@ -2,7 +2,7 @@
 
 
 a = Analysis(
-    ['mouse_jiggler_gui_with_time_window.py'],
+    ['mouse-jiggler.py'],
     pathex=[],
     binaries=[],
     datas=[],
@@ -22,7 +22,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='mouse_jiggler_gui_with_time_window',
+    name='mouse-jiggler',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
