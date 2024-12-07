@@ -3,7 +3,7 @@ import random
 import time
 import threading
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import font
 from datetime import datetime
 
 class MouseJiggler:
@@ -16,7 +16,8 @@ class MouseJiggler:
     def start_jiggling(self):
         self.jiggling = True
         while self.jiggling:
-            if self.start_time <= datetime.now().strftime("%H:%M") <= self.end_time:
+            current_time = datetime.now().strftime("%H:%M")
+            if self.start_time <= current_time <= self.end_time:  # Only jiggle within the time window
                 pyautogui.moveRel(random.randint(1, 5), random.randint(1, 5))
             time.sleep(self.jiggle_interval + random.uniform(-0.2, 0.2))
 
@@ -35,38 +36,66 @@ class MouseJigglerGUI:
     def __init__(self, root, jiggler):
         self.root = root
         self.jiggler = jiggler
+
         self.root.title("Mouse Jiggler with Time Window")
-        self.root.geometry("400x300")
+        self.root.geometry("400x350")
+        self.root.config(bg="#2d7b5f")
 
-        # GUI Elements
-        self.start_time_entry = self.create_entry("00:00")
-        self.end_time_entry = self.create_entry("23:59")
-        self.interval_entry = self.create_entry("1")
+        # Custom font
+        self.custom_font = font.Font(family="Helvetica", size=12, weight="bold")
 
-        # Toggle button
-        self.toggle_button = tk.Button(root, text="Start Jiggling", command=self.toggle_jiggling)
-        self.toggle_button.pack(pady=20)
+        # Frame with padding and solid border
+        self.frame = tk.Frame(self.root, bg="#2d7b5f", bd=10, relief="solid", padx=20, pady=20)
+        self.frame.pack(padx=20, pady=20, fill=tk.BOTH, expand=True)
 
-    def create_entry(self, default_value):
-        entry = tk.Entry(self.root)
-        entry.insert(0, default_value)
-        entry.pack(pady=5)
-        return entry
+        # Start Time Entry (Optional)
+        self.start_time_label = tk.Label(self.frame, text="Start Time (HH:MM):", font=self.custom_font, bg="#2d7b5f", fg="white")
+        self.start_time_label.pack(pady=(10, 5))
+        self.start_time_entry = tk.Entry(self.frame, font=self.custom_font, bd=0, relief="solid", width=10)
+        self.start_time_entry.insert(0, "00:00")
+        self.start_time_entry.pack(pady=(0, 20))
+
+        # End Time Entry (Optional)
+        self.end_time_label = tk.Label(self.frame, text="End Time (HH:MM):", font=self.custom_font, bg="#2d7b5f", fg="white")
+        self.end_time_label.pack(pady=(10, 5))
+        self.end_time_entry = tk.Entry(self.frame, font=self.custom_font, bd=0, relief="solid", width=10)
+        self.end_time_entry.insert(0, "23:59")
+        self.end_time_entry.pack(pady=(0, 20))
+
+        # Interval Entry
+        self.interval_label = tk.Label(self.frame, text="Jiggle Interval (seconds):", font=self.custom_font, bg="#2d7b5f", fg="white")
+        self.interval_label.pack(pady=(10, 5))
+        self.interval_entry = tk.Entry(self.frame, font=self.custom_font, bd=0, relief="solid", width=10)
+        self.interval_entry.insert(0, "1")
+        self.interval_entry.pack(pady=(0, 20))
+
+        # Start/Stop Button
+        self.toggle_button = tk.Button(self.frame, text="Start Jiggling", font=self.custom_font, bg="#4caf50", fg="white", relief="flat", command=self.toggle_jiggling)
+        self.toggle_button.pack(pady=20, ipadx=10, ipady=5, fill=tk.X)
 
     def toggle_jiggling(self):
-        if not self.jiggler.jiggling:
+        if not self.jiggler.jiggling:  # Start jiggling
             try:
-                self.jiggler.set_time_window(self.start_time_entry.get(), self.end_time_entry.get())
-                self.jiggler.set_timer(float(self.interval_entry.get()))
+                # Get the user input for the time window and interval
+                start_time = self.start_time_entry.get()
+                end_time = self.end_time_entry.get()
+                interval = float(self.interval_entry.get())
+
+                # Set time window and interval, even if not provided
+                self.jiggler.set_time_window(start_time, end_time)
+                self.jiggler.set_timer(interval)
+
+                # Start jiggling in a separate thread
                 threading.Thread(target=self.jiggler.start_jiggling, daemon=True).start()
-                self.toggle_button.config(text="Stop Jiggling")
-                messagebox.showinfo("Info", "Jiggling Started")
+
+                # Change button text and color
+                self.toggle_button.config(text="Stop Jiggling", bg="#e64a19")  # Red for stop
             except ValueError:
-                messagebox.showerror("Error", "Invalid input.")
-        else:
+                # Silent error handling for invalid input
+                pass
+        else:  # Stop jiggling
             self.jiggler.stop_jiggling()
-            self.toggle_button.config(text="Start Jiggling")
-            messagebox.showinfo("Info", "Jiggling Stopped")
+            self.toggle_button.config(text="Start Jiggling", bg="#4caf50")  # Green for start
 
 
 if __name__ == "__main__":
