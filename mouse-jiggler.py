@@ -9,7 +9,7 @@ from datetime import datetime
 class MouseJiggler:
     def __init__(self):
         self.jiggling = False
-        self.jiggle_interval = 30  # Default jiggle interval
+        self.jiggle_interval = 15  # Default jiggle interval to 15 seconds
         self.start_time = "00:00"  # Default start time
         self.end_time = "23:59"  # Default end time
 
@@ -78,7 +78,7 @@ class MouseJigglerGUI:
         self.interval_label.pack(pady=5)
 
         self.interval_entry = tk.Entry(self.frame, font=self.custom_font, justify="center")
-        self.interval_entry.insert(0, "30")  # Default interval is 30 seconds
+        self.interval_entry.insert(0, "15")  # Default interval is 15 seconds
         self.interval_entry.pack(pady=5)
 
         # Start/Stop button
