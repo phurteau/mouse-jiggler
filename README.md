@@ -24,7 +24,7 @@ This Python script simulates a "mouse jiggler" to prevent your computer from goi
 
 3. Run the script:
     ```bash
-    python mouse_jiggler_gui_with_time_window.py
+    python mouse-jiggler.py
     ```
 
 4. Set the timer interval and the start/end times for the jiggling.
