@@ -14,5 +14,8 @@ Thumbs.db
 dist/
 build/
 
+# Ignore the app's runtime config (written next to the app when it runs)
+zen-jiggler-config.json
+
 # Ignore any virtual environment directories (if using one)
 venv/

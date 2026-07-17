@@ -20,30 +20,37 @@ Teams notifications**. Zen Mouse Jiggler avoids both problems:
 
 ## Features
 
-- **Modern UI** - dark mode by default, one-click light mode, `#00ff00` accent.
+- **Modern themed UI** - a token-based design system with a true-black dark
+  theme (default) and a soft off-white light theme, one click apart.
+- **Custom accent color** - an HSV color-wheel picker (hue/saturation wheel +
+  brightness slider + hex input). A single accent drives every highlight;
+  everything else stays neutral. Persists between runs.
 - **Daily schedule** - set a start and end time; it only runs inside that
   window and **auto-resumes on its own the next day**. Overnight windows
   (e.g. `22:00`–`06:00`) are supported.
+- **Work schedule** - optionally restrict it to selected days of the week
+  (Sun–Sat, week starts Sunday). Defaults to Mon–Fri when enabled.
 - **Zen (invisible)** - the mouse cursor never moves.
 - **Awake mode** - keeps the screen from sleeping during your schedule,
   without muting Teams notifications.
 - **User override + auto-reactivate** - while you're actually using the
   mouse/keyboard it stays out of the way. After a period of inactivity
   (default **60s**, configurable) it quietly re-activates.
-- **System tray** - close or minimize to the tray; double-click the tray icon
-  (or *Show*) to restore. Start/Stop and *Launch at startup* are on the tray
-  menu too.
-- **Start minimized** - optionally launch straight to the tray.
-- **Launch at Windows startup** - optional; registers under the current-user
-  `Run` key and starts minimized.
+- **System tray** - close or minimize to the tray; the tray menu has
+  Show, Start/Stop, Launch at startup, and Quit.
+- **Start minimized** and **Launch at Windows startup** - both optional.
+- **Built-in updater** - checks GitHub Releases on launch and shows a banner
+  with one-click **Download** and (for the packaged app) **Install & Restart**,
+  which applies the update and relaunches while keeping your settings.
 - **Portable** - no installer, no admin rights. Runs from any folder,
-  **including inside OneDrive** (see below).
+  **including inside OneDrive**.
 - **Live status** - a colour-coded dot shows *Active*, *Standing by
   (you're active)*, *Waiting (resumes …)*, or *Stopped*.
 
 ## Get the portable app
 
-Download / copy **`dist/ZenMouseJiggler-portable.zip`**, extract the
+Download / copy **`ZenMouseJiggler-portable.zip`** from the latest
+[Release](https://github.com/phurteau/mouse-jiggler/releases), extract the
 `ZenMouseJiggler` folder anywhere you like (Desktop, a USB stick, or a OneDrive
 folder), and run **`ZenMouseJiggler.exe`** inside it. No Python required.
 
@@ -52,14 +59,14 @@ Keep the whole folder together - the `.exe` needs the files next to it.
 ## Run from source (Python)
 
 ```bash
-pip install pystray Pillow      # only needed for the system-tray icon
+pip install pystray Pillow      # tray icon + colour wheel
 python mouse-jiggler.py
 ```
 
 The idle-detection, invisible-activity, and keep-awake features use the
 built-in Windows API via `ctypes` - no third-party packages. `pystray`/`Pillow`
-are only for the tray; without them the app still runs (minimize goes to the
-taskbar instead of the tray).
+add the system-tray icon and the HSV colour wheel; without them the app still
+runs (minimize goes to the taskbar and the picker falls back to a hex input).
 
 Start minimized from the command line with `--minimized`.
 
@@ -96,7 +103,7 @@ This app is built to run from a synced OneDrive folder:
 
 | Situation | What it does |
 |---|---|
-| Outside your time window | Idle - releases keep-awake, waits for the next day |
+| Outside your time window / on a non-work day | Idle - releases keep-awake, waits for the next active window |
 | Inside window, you're actively using the mouse | Stands by (your real input keeps you awake) |
 | Inside window, idle ≥ your threshold | Sends an invisible `F15` keypress to keep you active |
 | Any time inside window (awake mode on) | Screen is kept from sleeping |
