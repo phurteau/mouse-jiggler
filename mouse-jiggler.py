@@ -47,7 +47,7 @@ from datetime import datetime, timedelta
 IS_WINDOWS = sys.platform.startswith("win")
 APP_NAME = "ZenMouseJiggler"
 APP_TITLE = "Zen Mouse Jiggler"
-APP_VERSION = "2.1.1"
+APP_VERSION = "2.1.2"
 CONFIG_FILENAME = "zen-jiggler-config.json"
 DEFAULT_ACCENT = "#025500"   # dimmed green; drives all accent highlights
 
@@ -343,6 +343,26 @@ def set_startup(enabled):
         return True
     except OSError:
         return False
+
+
+def reconcile_startup_entry():
+    """Self-heal the startup Run key. If it exists but points at a stale path
+    (e.g. the portable folder was moved or renamed), rewrite it to the current
+    executable location so Launch-at-startup keeps working. No-op when the key
+    is absent or already correct."""
+    if not IS_WINDOWS:
+        return
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, _RUN_KEY) as key:
+            try:
+                current, _ = winreg.QueryValueEx(key, APP_NAME)
+            except FileNotFoundError:
+                return  # not enabled -> nothing to heal
+    except OSError:
+        return
+    expected = _startup_command()
+    if str(current).strip() != expected.strip():
+        set_startup(True)
 
 
 # ---------------------------------------------------------------------------
@@ -1760,6 +1780,9 @@ def main():
     guard = acquire_single_instance()
     if guard is None:
         return
+
+    # Self-heal a stale startup entry if the folder was moved/renamed.
+    reconcile_startup_entry()
 
     minimized_arg = _parse_args(sys.argv)
     config = load_config()

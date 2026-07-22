@@ -106,6 +106,30 @@ This app is built to run from a synced OneDrive folder:
   automatically fall back to `%LOCALAPPDATA%\ZenMouseJiggler\` if the
   OneDrive-side write is blocked.
 
+## Uninstalling
+
+The app is portable - there is no installer and no "Add/Remove Programs" entry.
+It only writes two things outside its own folder, and both only matter if you
+turned on **Launch at Windows startup**:
+
+- one registry value under `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`
+  (removed automatically when you untick the box), and
+- a small `%LOCALAPPDATA%\ZenMouseJiggler\` folder holding the single-instance
+  lock (and a settings copy only if the beside-the-exe write was ever blocked).
+
+There are **no** HKLM keys, scheduled tasks, Start Menu shortcuts, or services.
+
+**Easiest way - the bundled uninstaller:** run **`Uninstall.bat`** from inside
+the app folder. It closes the app, removes the startup entry, deletes
+`%LOCALAPPDATA%\ZenMouseJiggler`, and then deletes the app folder itself.
+
+**Manual way:** untick *Launch at Windows startup* in the app, then delete the
+app folder, and optionally delete `%LOCALAPPDATA%\ZenMouseJiggler`.
+
+> **Moved the folder?** No need to re-toggle anything - on launch the app
+> **self-heals** the startup entry, updating it to the folder's new location so
+> Launch-at-startup keeps working.
+
 ## How the schedule / override logic works
 
 | Situation | What it does |
