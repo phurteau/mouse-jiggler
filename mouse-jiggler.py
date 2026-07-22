@@ -1167,7 +1167,7 @@ class JigglerApp:
         self.zen_note = tk.Label(
             self.card_pad, justify="left", anchor="w", font=self.f_small,
             text=("Zen mode: the cursor never moves. Teams stays "
-                  "\u201cAvailable\u201d and your\nnotifications & sounds "
+                  "'Available' and your\nnotifications & sounds "
                   "are never muted."))
         self.zen_note.pack(fill=tk.X, pady=(8, 14))
 
@@ -1259,7 +1259,7 @@ class JigglerApp:
         self.work_var.set(bool(c.get("work_schedule_enabled", False)))
         days = c.get("work_days", [1, 2, 3, 4, 5])
         self.work_days = set(int(d) for d in days if 0 <= int(d) <= 6)
-        # Reflect the real registry state, not just stored config.
+        # Reflect the real registry state rather than only the stored config.
         self.startup_var.set(is_startup_enabled())
 
     def _collect_config(self):
@@ -1534,13 +1534,13 @@ class JigglerApp:
             state, "#8a8a8e")
         self.status_dot.config(fg=color)
         if state == "active":
-            self.status_txt.config(text="Active \u2014 keeping you awake (zen)")
+            self.status_txt.config(text="Active: keeping you awake (zen)")
         elif state == "paused":
-            self.status_txt.config(text="Standing by \u2014 you're active")
+            self.status_txt.config(text="Standing by: you're active")
         elif state == "waiting":
             resume = self.engine.next_resume_dt()
             when = resume.strftime("%a %H:%M") if resume else self.engine.start_time
-            self.status_txt.config(text=f"Waiting \u2014 resumes {when}")
+            self.status_txt.config(text=f"Waiting: resumes {when}")
         else:
             self.status_txt.config(text="Stopped")
         self._refresh_footer()
@@ -1653,7 +1653,7 @@ class JigglerApp:
         threading.Thread(target=worker, daemon=True).start()
 
     def _on_dl_progress(self, fraction):
-        self.banner_lbl.config(text="Downloading update\u2026 %d%%"
+        self.banner_lbl.config(text="Downloading update... %d%%"
                                % int(fraction * 100))
 
     def _on_dl_done(self, path):
@@ -1673,7 +1673,7 @@ class JigglerApp:
     def _install_and_restart(self):
         self.banner_action.config(state="disabled")
         self.banner_lbl.config(
-            text="Installing update\u2026 the app will restart.")
+            text="Installing update... the app will restart.")
         self.root.update_idletasks()
         try:
             apply_update(self._downloaded_path, app_dir())
