@@ -37,8 +37,15 @@ Teams notifications**. Zen Mouse Jiggler avoids both problems:
   mouse/keyboard it stays out of the way. After a period of inactivity
   (default **60s**, configurable) it quietly re-activates.
 - **System tray** - close or minimize to the tray; the tray menu has
-  Show, Start/Stop, Launch at startup, and Quit.
-- **Start minimized** and **Launch at Windows startup** - both optional.
+  Show, Start/Stop, Launch at startup, and Quit. The tray icon is green while
+  running and gray when stopped.
+- **Graceful Quit** - a Quit button in the header fully exits the app,
+  releasing the keep-awake request, the worker thread, the tray, and the
+  single-instance lock.
+- **Start minimized** and **Launch at Windows startup** - both optional. When
+  launched at startup, the jiggler **auto-starts on your saved schedule** so it
+  resumes with no clicks (a normal manual launch stays stopped until you press
+  Start).
 - **Built-in updater** - checks GitHub Releases on launch and shows a banner
   with one-click **Download** and (for the packaged app) **Install & Restart**,
   which applies the update and relaunches while keeping your settings.

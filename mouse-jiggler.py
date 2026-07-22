@@ -47,7 +47,7 @@ from datetime import datetime, timedelta
 IS_WINDOWS = sys.platform.startswith("win")
 APP_NAME = "ZenMouseJiggler"
 APP_TITLE = "Zen Mouse Jiggler"
-APP_VERSION = "2.1.0"
+APP_VERSION = "2.1.1"
 CONFIG_FILENAME = "zen-jiggler-config.json"
 DEFAULT_ACCENT = "#025500"   # dimmed green; drives all accent highlights
 
@@ -64,6 +64,13 @@ try:
 except Exception:  # pragma: no cover
     TRAY_AVAILABLE = False
 
+# Pillow (independent of pystray) for rendering the app/tray/window icon.
+try:
+    from PIL import Image as _IconImage, ImageDraw as _IconDraw
+    ICON_AVAILABLE = True
+except Exception:  # pragma: no cover
+    ICON_AVAILABLE = False
+
 # Optional Pillow-Tk bridge for the HSV colour wheel. Falls back to a hex-only
 # picker if unavailable.
 try:
@@ -74,6 +81,42 @@ except Exception:  # pragma: no cover
 
 if IS_WINDOWS:
     import winreg
+
+
+def render_icon(size=64, running=True):
+    """Render the branded app icon (dark tile + green mouse cursor + jiggle
+    arcs) at `size` px. When `running` is False it is drawn in neutral gray
+    (used by the tray to show the stopped state). Returns a Pillow image, or
+    None if Pillow is unavailable."""
+    if not ICON_AVAILABLE:
+        return None
+    accent = (3, 178, 0, 255) if running else (150, 150, 152, 255)
+    accent_dk = (2, 85, 0, 255) if running else (110, 110, 112, 255)
+    tile = (14, 14, 16, 255)
+    border = (42, 42, 46, 255)
+    white = (240, 240, 240, 255)
+
+    img = _IconImage.new("RGBA", (size, size), (0, 0, 0, 0))
+    d = _IconDraw.Draw(img)
+    s = size / 512.0
+    m = int(24 * s)
+    d.rounded_rectangle([m, m, size - m, size - m], radius=int(96 * s),
+                        fill=tile, outline=border, width=max(1, int(6 * s)))
+    cx, cy = size * 0.60, size * 0.46
+    for i, r in enumerate((0.16, 0.24, 0.32)):
+        col = accent if i == 0 else accent_dk
+        rr = int(size * r)
+        d.arc([cx - rr, cy - rr, cx + rr, cy + rr], -55, 55, fill=col,
+              width=max(2, int((14 - i * 3) * s)))
+    scale = size * 0.30
+    ox, oy = size * 0.30, size * 0.26
+    pts = [(0.0, 0.0), (0.0, 0.72), (0.20, 0.55), (0.33, 0.86),
+           (0.46, 0.80), (0.32, 0.50), (0.56, 0.50)]
+    poly = [(ox + x * scale, oy + y * scale) for x, y in pts]
+    d.polygon(poly, fill=accent, outline=white)
+    d.line(poly + [poly[0]], fill=white, width=max(2, int(scale * 0.03)),
+           joint="curve")
+    return img
 
 # ---------------------------------------------------------------------------
 # Win32 backend (idle detection, invisible activity, keep-awake, mutex).
@@ -166,6 +209,28 @@ def acquire_single_instance():
     except Exception:
         # Never let single-instance infrastructure stop the app from running.
         return object()
+
+
+def release_single_instance():
+    """Explicitly release the single-instance lock (the OS also does this on
+    process exit, but releasing at graceful shutdown frees it immediately)."""
+    global _INSTANCE_LOCK
+    fh = _INSTANCE_LOCK
+    if fh is None or not IS_WINDOWS:
+        _INSTANCE_LOCK = None
+        return
+    try:
+        import msvcrt
+        try:
+            fh.seek(0)
+            msvcrt.locking(fh.fileno(), msvcrt.LK_UNLCK, 1)
+        except OSError:
+            pass
+        fh.close()
+    except Exception:
+        pass
+    finally:
+        _INSTANCE_LOCK = None
 
 
 # ---------------------------------------------------------------------------
@@ -703,9 +768,13 @@ class TrayIcon:
 
     @staticmethod
     def _image(running):
+        img = render_icon(64, running)
+        if img is not None:
+            return img
+        # Fallback: simple status dot if the renderer is unavailable.
         img = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
         d = ImageDraw.Draw(img)
-        color = (0, 255, 0, 255) if running else (140, 140, 142, 255)
+        color = (3, 178, 0, 255) if running else (140, 140, 142, 255)
         d.ellipse((10, 10, 54, 54), fill=color)
         return img
 
@@ -908,7 +977,8 @@ class AccentWheelDialog(tk.Toplevel):
 # GUI.
 # ---------------------------------------------------------------------------
 class JigglerApp:
-    def __init__(self, root, engine, config=None, start_minimized=False):
+    def __init__(self, root, engine, config=None, start_minimized=False,
+                 launched_at_startup=False):
         self.root = root
         self.engine = engine
         self.config = dict(DEFAULT_CONFIG)
@@ -925,6 +995,7 @@ class JigglerApp:
 
         root.title(APP_TITLE)
         root.minsize(460, 760)
+        self._set_window_icon()
 
         self.f_title = font.Font(family="Segoe UI", size=17, weight="bold")
         self.f_label = font.Font(family="Segoe UI", size=10)
@@ -951,6 +1022,11 @@ class JigglerApp:
             self.root.after(10, self.hide_to_tray)
         elif start_minimized:
             self.root.after(10, self.root.iconify)
+
+        # Auto-start jiggling when launched at Windows startup, so the saved
+        # schedule resumes with no clicks. (Manual launches stay stopped.)
+        if launched_at_startup:
+            self.root.after(50, self._auto_start)
 
         if AUTO_UPDATE_CHECK:
             threading.Thread(target=self._bg_check_update, daemon=True).start()
@@ -989,6 +1065,10 @@ class JigglerApp:
                                    relief="flat", bd=0, cursor="hand2",
                                    command=self.toggle_theme, padx=12, pady=6)
         self.theme_btn.pack(side=tk.RIGHT)
+        self.quit_btn = tk.Button(self.header, text="Quit", font=self.f_small,
+                                  relief="flat", bd=0, cursor="hand2",
+                                  command=self._on_quit, padx=12, pady=6)
+        self.quit_btn.pack(side=tk.RIGHT, padx=(0, 8))
 
         # Faint accent rule beneath the header (a nod to the top accent glow).
         self.head_rule = tk.Frame(self.outer, height=2)
@@ -1114,6 +1194,12 @@ class JigglerApp:
         self.toggle_btn.bind(
             "<Leave>", lambda e: self.toggle_btn.config(
                 bg=DANGER if self.engine.running else self._tok["acc"]))
+        # Quit: subtle red on hover to signal it fully exits the app.
+        self.quit_btn.bind("<Enter>", lambda e: self.quit_btn.config(
+            fg="#ffffff", bg=DANGER, highlightbackground=DANGER))
+        self.quit_btn.bind("<Leave>", lambda e: self.quit_btn.config(
+            fg=self._tok["dim"], bg=self._tok["panel2"],
+            highlightbackground=self._tok["line"]))
 
     def _field(self, parent, label, default, side=tk.LEFT):
         wrap = tk.Frame(parent)
@@ -1205,6 +1291,9 @@ class JigglerApp:
                               highlightbackground=line, highlightcolor=line,
                               text="\u2600  Light" if self.theme_name == "dark"
                               else "\u263e  Dark")
+        self.quit_btn.config(bg=panel2, fg=t["dim"], activebackground=panel2,
+                             activeforeground=txt, highlightthickness=1,
+                             highlightbackground=line, highlightcolor=line)
 
         # Card surface with 1px line border.
         self.card.config(bg=panel, highlightbackground=line,
@@ -1340,19 +1429,24 @@ class JigglerApp:
             self._set_inputs_state("normal")
             self._refresh_toggle_visual()
             return
+        self._start_engine()
+
+    def _start_engine(self):
+        """Validate the schedule inputs and start jiggling. Returns True on
+        success. Shared by the Start button and startup auto-start."""
         start = self.start_entry.get().strip()
         end = self.end_entry.get().strip()
         if not self._validate_time(start) or not self._validate_time(end):
             self._flash_footer("Times must be in HH:MM 24-hour format.")
-            return
+            return False
         try:
             idle_threshold = float(self.idle_entry.get())
         except ValueError:
             self._flash_footer("Idle seconds must be a number.")
-            return
+            return False
         if idle_threshold < 5:
             self._flash_footer("Idle seconds must be at least 5.")
-            return
+            return False
         self.engine.configure(start, end, idle_threshold,
                               bool(self.awake_var.get()),
                               work_schedule_enabled=bool(self.work_var.get()),
@@ -1361,6 +1455,13 @@ class JigglerApp:
         self._set_inputs_state("disabled")
         self.engine.start()
         self._refresh_toggle_visual()
+        return True
+
+    def _auto_start(self):
+        """Begin jiggling automatically (used when launched at Windows
+        startup). Silently no-ops if the schedule inputs are invalid."""
+        if not self.engine.running:
+            self._start_engine()
 
     def _set_inputs_state(self, state):
         for e in self._entries:
@@ -1379,6 +1480,18 @@ class JigglerApp:
             self.root.withdraw()
         else:
             self.root.iconify()
+
+    def _set_window_icon(self):
+        """Set the title-bar/taskbar window icon from the rendered branded
+        image. No-ops gracefully if Pillow's Tk bridge is unavailable."""
+        if not (WHEEL_AVAILABLE and ICON_AVAILABLE):
+            return
+        try:
+            img = render_icon(64, running=True)
+            self._icon_photo = _WheelImageTk.PhotoImage(img)
+            self.root.iconphoto(True, self._icon_photo)
+        except Exception:
+            pass
 
     def show_window(self):
         self.root.deiconify()
@@ -1579,6 +1692,8 @@ class JigglerApp:
 
     def _poll_status(self):
         # Main-thread pump: drain tray commands, react to engine state.
+        if getattr(self, "_quitting", False):
+            return
         self._drain_commands()
         if self._last_running != self.engine.running:
             if not self.engine.running:
@@ -1588,14 +1703,51 @@ class JigglerApp:
                 self.tray.refresh(self.engine.running)
         self._last_running = self.engine.running
         self._refresh_status()
-        self.root.after(300, self._poll_status)
+        self._poll_after_id = self.root.after(300, self._poll_status)
 
     def _on_quit(self):
-        self.engine.stop()
-        set_keep_awake(False)
+        """Graceful full shutdown: stop the worker, release the screen-awake
+        request and single-instance lock, stop the tray, and close the app so
+        no threads, timers, or OS power requests are left behind."""
+        if getattr(self, "_quitting", False):
+            return
+        self._quitting = True
+        # 1) Stop the jiggler worker and wait briefly for it to unwind.
+        try:
+            self.engine.stop()
+            thread = getattr(self.engine, "_thread", None)
+            if thread is not None:
+                thread.join(timeout=2)
+        except Exception:
+            pass
+        # 2) Release the keep-awake power request so the PC can sleep again.
+        try:
+            set_keep_awake(False)
+        except Exception:
+            pass
+        # 3) Stop the system-tray icon/thread.
         if self.tray:
-            self.tray.stop()
-        self.root.destroy()
+            try:
+                self.tray.stop()
+            except Exception:
+                pass
+        # 4) Release the single-instance lock immediately.
+        release_single_instance()
+        # 5) Cancel the pending status-poll timer, then tear down the Tk loop.
+        try:
+            after_id = getattr(self, "_poll_after_id", None)
+            if after_id is not None:
+                self.root.after_cancel(after_id)
+        except Exception:
+            pass
+        try:
+            self.root.quit()
+        except Exception:
+            pass
+        try:
+            self.root.destroy()
+        except Exception:
+            pass
 
 
 def _parse_args(argv):
@@ -1615,7 +1767,8 @@ def main():
 
     engine = JigglerEngine()
     root = tk.Tk()
-    JigglerApp(root, engine, config=config, start_minimized=start_minimized)
+    JigglerApp(root, engine, config=config, start_minimized=start_minimized,
+               launched_at_startup=minimized_arg)
     root.mainloop()
 
 
