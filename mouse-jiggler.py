@@ -47,7 +47,7 @@ from datetime import datetime, timedelta
 IS_WINDOWS = sys.platform.startswith("win")
 APP_NAME = "ZenMouseJiggler"
 APP_TITLE = "Zen Mouse Jiggler"
-APP_VERSION = "2.1.2"
+APP_VERSION = "2.1.3"
 CONFIG_FILENAME = "zen-jiggler-config.json"
 DEFAULT_ACCENT = "#025500"   # dimmed green; drives all accent highlights
 
